@@ -33,20 +33,13 @@ const sendTokens = (res, tokens, user) => {
     };
 };
 
-export const enterAsGuest = async () => {
+export const enterAsGuest = async ({res}) => {
     const randomNumber = Math.floor(Math.random() * 10_000_000) + 1;
 
-    return await User.create({name: `user${randomNumber}`, isGuest: true})
-}
+    const user = await User.create({name: `user${randomNumber}`, isGuest: true})
 
-export const getUserById = async ({ id }) => {
-    const user = await User.findByPk(id);
-
-    if (!user) {
-        throw { message: "Пользователь не найден" };
-    }
-
-    return user;
+    const tokens = generateToken(user);
+    return sendTokens(res, tokens, user);
 }
 
 export const updateUser = async ({ id, login }) => {

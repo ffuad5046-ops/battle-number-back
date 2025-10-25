@@ -5,17 +5,7 @@ import {User} from "../models/User.js";
 
 export const enterAsGuest = async (req, res) => {
     try {
-        const user = await userService.enterAsGuest();
-        res.json(user);
-    } catch (err) {
-        res.status(err.status || 500).json({ error: err.message });
-    }
-};
-
-export const getUserById = async (req, res) => {
-    try {
-        const { id } = req.query;
-        const user = await userService.getUserById({id});
+        const user = await userService.enterAsGuest({res});
         res.json(user);
     } catch (err) {
         res.status(err.status || 500).json({ error: err.message });

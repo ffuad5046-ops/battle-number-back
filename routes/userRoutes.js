@@ -22,7 +22,6 @@ router.post("/login",
 );
 router.post("/refresh", userController.refresh);
 router.get("/", userController.enterAsGuest);
-router.get("/get-user-by-id", userController.getUserById);
 router.get("/logout", userController.logout);
 router.patch("/:id", userController.updateUser);
 router.post("/verify-email", userController.verifyEmail);
