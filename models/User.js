@@ -17,11 +17,28 @@ export const User = sequelize.define("User", {
     allowNull: true,
     unique: true
   },
+
   level: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1
+  },
+  currentXP: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0
   },
+  nextLevelXP: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 10
+  },
+  progressPercent: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
+  },
+
   rankPoint: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -47,5 +64,16 @@ export const User = sequelize.define("User", {
   verificationExpires: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+
+  resetPasswordCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
+  },
+  resetPasswordExpires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null
   }
 });

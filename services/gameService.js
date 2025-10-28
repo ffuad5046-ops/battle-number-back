@@ -1,8 +1,9 @@
-import {Op, QueryTypes} from "sequelize";
+import {Op} from "sequelize";
 import {MainField} from "../models/MainField.js";
 import {ExtraField} from "../models/ExtraField.js";
 import {Game} from "../models/Game.js";
 import {sequelize} from "../db.js";
+import {getIO, getUserSockets} from "../socket.js";
 
 export const getUserGame = async ({userId}) => {
     const game = await Game.findOne({
@@ -90,7 +91,6 @@ export const getUserStats = async ({userId}) => {
 
 
 export const getUserStatsSummary = async ({ userId, type, page = 1, size = 10}) => {
-
     const offset = (page - 1) * size;
     const limit = parseInt(size, 10);
 
@@ -151,4 +151,3 @@ export const getUserStatsSummary = async ({ userId, type, page = 1, size = 10}) 
         totalGames: count,
     });
 }
-

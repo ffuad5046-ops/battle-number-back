@@ -51,6 +51,12 @@ export const Game = sequelize.define("Game", {
         defaultValue: [],
         comment: "Список ID игроков, подтвердивших готовность начать игру",
     },
+    repeatGamePlayers: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: [],
+        comment: "Список ID игроков, подтвердивших повторить игру",
+    },
 
     mainFieldWidth: {
         type: DataTypes.INTEGER,

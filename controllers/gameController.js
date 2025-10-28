@@ -19,6 +19,7 @@ export const getUserStats = async (req, res) => {
         res.status(err.status || 500).json({ error: err.message });
     }
 };
+
 export const getUserStatsSummary = async (req, res) => {
     try {
         const { userId } = req.params;

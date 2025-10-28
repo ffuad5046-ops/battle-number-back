@@ -18,6 +18,10 @@ export const sendInvitation = async ({fromUserId, toLogin,mainFieldWidth,
     const toUser = await User.findOne({ where: { name: toLogin } });
     if (!toUser) throw { message: "Пользователь не найден" };
 
+    if (fromUserId === toUser.id) {
+        throw { message: "Вы не можете отправить приглашение сами себе" }
+    }
+
     // Проверяем, есть ли активное приглашение между этими пользователями
     const existing = await Invitation.findOne({
         where: {

@@ -21,7 +21,7 @@ app.use(cors({
   origin: "http://localhost:3000",
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
-  methods: ["GET", "POST", "PUT", "DELETE"]
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
 }));
 
 app.use(express.json());
@@ -37,7 +37,6 @@ app.get('/', (req, res) => {
   res.status(200).type('text/plain');
   res.send('About page');
 });
-
 
 server.listen(port, async () => {
   await connectDB();

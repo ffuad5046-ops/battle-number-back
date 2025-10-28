@@ -3,6 +3,8 @@ import {ExtraField} from "./models/ExtraField.js";
 import {Game} from "./models/Game.js";
 import {MainField} from "./models/MainField.js";
 import {Op} from "sequelize";
+import * as userService from './services/userService.js'
+import {User} from "./models/User.js";
 
 let io;
 const userSockets = new Map();
@@ -105,8 +107,12 @@ export function initWebsocket(server) {
         if (game.status !== 'active') return
 
         game.winnerId = userId;
+        const user = await User.findByPk(game.winnerId);
         game.status = 'finished'
         game.turnDeadline = null;
+        if (!user.isGuest) {
+          await userService.recountLevel(game.winnerId)
+        }
         await game.save();
 
         const opponentId =
@@ -122,6 +128,41 @@ export function initWebsocket(server) {
           }
         });
       }
+    });
+
+    socket.on("game:surrender", async ({ gameId, userId }) => {
+      const game = await Game.findByPk(gameId);
+      if (!game) return;
+
+      if (game.status !== 'active' && game.status !== 'accept') return;
+
+      const winnerId =
+          userId === game.player1Id ? game.player2Id : game.player1Id;
+
+      game.winnerId = winnerId;
+      game.status = 'finished'
+      const user = await User.findByPk(game.winnerId);
+      game.turnDeadline = null;
+
+      if (!user.isGuest) {
+        await userService.recountLevel(game.winnerId)
+      }
+
+      await game.save();
+
+      [game.player1Id, game.player2Id].forEach((id) => {
+        const socketId = getUserSockets().get(id);
+        if (socketId) {
+          getIO().to(socketId).emit("game:surrender", {
+            winnerId,
+          });
+        }
+      });
+
+      io.to(`game-${gameId}`).emit("game:finished", {
+        winnerId,
+        reason: "surrender",
+      });
     });
 
     socket.on("cell:found", async ({ gameId, cellId, userId }) => {
@@ -195,36 +236,6 @@ export function initWebsocket(server) {
             unguessedNumbers: unguessedNumbers
           });
         }
-      });
-    });
-
-    socket.on("game:surrender", async ({ gameId, userId }) => {
-      const game = await Game.findByPk(gameId);
-      if (!game) return;
-
-      if (game.status !== 'active' && game.status !== 'accept') return;
-
-      const winnerId =
-          userId === game.player1Id ? game.player2Id : game.player1Id;
-
-      game.winnerId = winnerId;
-      game.status = 'finished'
-      game.turnDeadline = null;
-      await game.save();
-
-      [game.player1Id, game.player2Id].forEach((id) => {
-        const socketId = getUserSockets().get(id);
-        if (socketId) {
-          getIO().to(socketId).emit("game:surrender", {
-            winnerId,
-          });
-        }
-      });
-
-      // Оповещаем обоих игроков
-      io.to(`game-${gameId}`).emit("game:finished", {
-        winnerId,
-        reason: "surrender",
       });
     });
 
@@ -410,6 +421,69 @@ export function initWebsocket(server) {
         }
       });
     });
+
+    socket.on("game:repeat", async ({gameId, userId}) => {
+      const game = await Game.findByPk(gameId);
+      if (!game) return;
+
+      const repeatGamePlayers = game.repeatGamePlayers || [];
+      if (!repeatGamePlayers.includes(userId)) {
+        await game.update({ repeatGamePlayers: [...repeatGamePlayers, userId] });
+      }
+
+      const repeatGamePlayersBoth =
+          game.repeatGamePlayers.includes(game.player1Id) &&
+          game.repeatGamePlayers.includes(game.player2Id);
+
+      if (repeatGamePlayersBoth) {
+        const firstTurn = Math.random() < 0.5 ? game.player1Id : game.player2Id;
+
+        const gameTemp = await Game.create({
+          player1Id: game.player1Id,
+          player2Id: game.player2Id,
+          mainFieldWidth: game.mainFieldWidth,
+          mainFieldHeight: game.mainFieldHeight,
+          extraFieldWidth: game.extraFieldWidth,
+          extraFieldHeight: game.extraFieldHeight,
+          isShowLoseLeft: game.isShowLoseLeft,
+          numberRange: game.numberRange,
+          currentTurnPlayerId: firstTurn,
+          searchNumber: null,
+          turnDeadline: null
+        });
+
+        const gameNew = await Game.findByPk(gameTemp.id, {
+          include: [
+            { association: "player1", attributes: ["id", "name"] },
+            { association: "player2", attributes: ["id", "name"] },
+          ]
+        });
+
+        [game.player1Id, game.player2Id].forEach((id) => {
+          const socketId = getUserSockets().get(id);
+          if (socketId) {
+            getIO().to(socketId).emit("game:repeat-game", {
+              game: gameNew,
+              mainFields: [],
+              extraFields: [],
+              leftForLose: 0,
+              leftForWin: 0,
+            });
+          }
+        });
+
+        return
+      }
+
+      [game.player1Id, game.player2Id].forEach((id) => {
+        const socketId = getUserSockets().get(id);
+        if (socketId) {
+          getIO().to(socketId).emit("game:repeat-game-agreed", {
+            repeatGamePlayers: game.repeatGamePlayers
+          });
+        }
+      });
+    })
 
     socket.on("registerUser", (userId) => {
       if (!userId) return;

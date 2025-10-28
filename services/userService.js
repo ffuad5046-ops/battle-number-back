@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import { Op } from "sequelize";
+import {Op} from "sequelize";
 
 const ACCESS_SECRET =  "access_secret";
 const REFRESH_SECRET =  "refresh_secret";
@@ -49,6 +49,10 @@ export const updateUser = async ({ id, login }) => {
         throw { message: "Пользователь не найден" };
     }
 
+    const temp = await User.findOne({where: {name: login}});
+
+    if (temp) throw { message: "Логин занят" };
+
     user.name = login
     user.save();
 
@@ -72,7 +76,7 @@ export const sendEmail = async (to, subject, text) => {
     });
 };
 
-export const register = async ({ name, email, password, res }) => {
+export const register = async ({ name, email, password }) => {
     const exists = await User.findOne({
         where: { [Op.or]: [{ name }, { email }] },
     });
@@ -83,7 +87,7 @@ export const register = async ({ name, email, password, res }) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expirationTime = new Date(Date.now() + 10 * 60 * 1000); // ✅ код действует 10 минут
+    const expirationTime = new Date(Date.now() + 10 * 60 * 1000);
 
     const user = await User.create({
         name,
@@ -92,13 +96,14 @@ export const register = async ({ name, email, password, res }) => {
         isVerified: false,
         verificationCode,
         verificationExpires: expirationTime,
+        isGuest: false
     });
 
-    // await sendEmail(
-    //     email,
-    //     "Подтверждение регистрации",
-    //     `Ваш код подтверждения: ${verificationCode}`
-    // );
+    await sendEmail(
+        email,
+        "Подтверждение регистрации",
+        `Ваш код подтверждения: ${verificationCode}`
+    );
 
     return {
         message: "Код подтверждения отправлен на почту",
@@ -127,13 +132,93 @@ export const resendCode = async ({ email }) => {
         verificationCodeExpires: Date.now() + 10 * 60 * 1000,
     });
 
-    // await sendEmail({
-    //     to: email,
-    //     subject: "Подтверждение регистрации",
-    //     text: `Ваш код подтверждения: ${verificationCode}`,
-    // });
+    await sendEmail(
+        email,
+        "Подтверждение регистрации",
+        `Ваш код подтверждения: ${verificationCode}`,
+    );
 
     return {message: "Код повторно отправлен"};
+
+}
+
+export const resetPasswordEmailResendCode = async ({ email }) => {
+    if (!email) {
+        throw { message: "Email обязателен" };
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+        throw { message: "Пользователь не найден", status: 404 };
+    }
+
+    const resetPasswordCode = crypto.randomInt(100000, 999999).toString();
+
+    await user.update({
+        resetPasswordCode,
+        resetPasswordExpires: Date.now() + 10 * 60 * 1000,
+    });
+
+    await sendEmail(
+        email,
+        "Сброс пароля",
+        `Ваш код подтверждения: ${resetPasswordCode}`,
+    );
+
+    return {message: "Код повторно отправлен"};
+
+}
+
+export const resetPasswordEmailCode = async ({ email }) => {
+    if (!email) {
+        throw { message: "Email обязателен" };
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+        throw { message: "Пользователь не найден", status: 404 };
+    }
+
+    const resetPasswordCode = crypto.randomInt(100000, 999999).toString();
+
+    await user.update({
+        resetPasswordCode,
+        resetPasswordExpires: Date.now() + 10 * 60 * 1000,
+    });
+
+    await sendEmail(
+        email,
+        "Сброс пароля",
+        `Ваш код подтверждения: ${resetPasswordCode}`,
+    );
+
+    return {message: "Код отправлен"};
+
+}
+
+export const resetPasswordEmailCodeApprove = async ({ code, email }) => {
+    if (!code) {
+        throw { message: "Email обязателен" };
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+        throw { message: "Пользователь не найден", status: 404 };
+    }
+
+    if (
+        user.resetPasswordCode !== code ||
+        new Date() > user.resetPasswordExpires
+    ) {
+        throw { message: "Код неверный или просрочен" };
+    }
+
+    await user.update({
+        resetPasswordCode: null,
+        resetPasswordExpires: null
+    });
+
+    return {message: "Код верный"};
 
 }
 
@@ -145,8 +230,6 @@ export const verifyEmail = async ({ email, code, res }) => {
     if (user.isVerified) {
         throw { message: "Email уже подтверждён" };
     }
-    console.log(user.verificationCode)
-    console.log(code)
     if (
         user.verificationCode !== code ||
         new Date() > user.verificationExpires
@@ -175,7 +258,19 @@ export const login = async ({ email, password, res }) => {
     return sendTokens(res, tokens, user);
 }
 
-export const refresh = async ({token, res}) => {
+export const resetPassword = async ({password, email}) => {
+    const user = await User.findOne({ where: { email } });
+    if (!user) throw { message: "Пользователь не найден" };
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt)
+
+    await user.save()
+
+    return {message: 'Пароль успешно изменен'};
+};
+
+export const refresh = async ({res, token}) => {
     if (!token) throw { message: "Нет refresh токена" };
 
     let payload;
@@ -196,3 +291,41 @@ export const logout = (res) => {
     res.clearCookie("refreshToken");
     return { message: "Вы вышли из системы" };
 };
+
+const countNextLevel = (level) => {
+    let result = 10
+
+    switch (level) {
+        case 2:
+            result = 20;
+            break;
+        case 3:
+            result = 50;
+            break;
+        default:
+            result += 50;
+            break;
+    }
+
+    return result
+}
+
+export const recountLevel = async (winnerId) => {
+    const user = await User.findByPk(winnerId);
+
+    if (!user) {
+        throw { message: "Пользователь не найден" };
+    }
+
+    if (user.currentXP + 5 >= user.nextLevelXP) {
+        user.level += 1;
+        user.currentXP = 0;
+        user.nextLevelXP = countNextLevel(user.level);
+        user.progressPercent = 0;
+    } else {
+        user.currentXP += 5;
+        user.progressPercent = Math.floor( (user.currentXP) * 100 / user.nextLevelXP);
+    }
+
+    await user.save()
+}

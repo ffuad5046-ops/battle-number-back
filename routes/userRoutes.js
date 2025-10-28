@@ -27,5 +27,9 @@ router.patch("/:id", userController.updateUser);
 router.post("/verify-email", userController.verifyEmail);
 router.get("/get-user-auth", authenticateToken, userController.getUserAuth);
 router.post("/resend-code", userController.resendCode);
+router.patch("/reset/password", userController.resetPassword);
+router.post("/reset-password-email-code", userController.resetPasswordEmailCode);
+router.post("/reset-password-email-resend-code", userController.resetPasswordEmailResendCode);
+router.post("/reset-password-email-code-approve", userController.resetPasswordEmailCodeApprove);
 
 export default router;

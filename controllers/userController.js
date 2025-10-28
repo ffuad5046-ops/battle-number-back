@@ -91,11 +91,55 @@ export const verifyEmail = async (req, res) => {
         res.status(err.status || 500).json({ error: err.message });
     }
 };
+
 export const resendCode = async (req, res) => {
     try {
         const { email } = req.body;
 
         const result = await userService.resendCode({email});
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};
+
+export const resetPasswordEmailCode = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const result = await userService.resetPasswordEmailCode({email});
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};
+export const resetPasswordEmailResendCode = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const result = await userService.resetPasswordEmailResendCode({email});
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};
+
+export const resetPasswordEmailCodeApprove = async (req, res) => {
+    try {
+        const { code, email } = req.body;
+
+        const result = await userService.resetPasswordEmailCodeApprove({code, email});
+        res.json(result);
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { password, email } = req.body;
+
+        const result = await userService.resetPassword({password, email});
         res.json(result);
     } catch (err) {
         res.status(err.status || 500).json({ error: err.message });
