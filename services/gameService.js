@@ -3,7 +3,8 @@ import {MainField} from "../models/MainField.js";
 import {ExtraField} from "../models/ExtraField.js";
 import {Game} from "../models/Game.js";
 import {sequelize} from "../db.js";
-import {getIO, getUserSockets} from "../socket.js";
+import {Trap} from "../models/Trap.js";
+import {TrapForGame} from "../models/TrapForGame.js";
 
 export const getUserGame = async ({userId}) => {
     const game = await Game.findOne({
@@ -15,6 +16,11 @@ export const getUserGame = async ({userId}) => {
         include: [
             { association: "player1", attributes: ["id", "name"] },
             { association: "player2", attributes: ["id", "name"] },
+            {
+                model: TrapForGame,
+                as: "traps",
+                attributes: ["id", "title", "isUsed", "ownerId"],
+            },
         ]
     });
 
@@ -150,4 +156,9 @@ export const getUserStatsSummary = async ({ userId, type, page = 1, size = 10}) 
         currentPage: Number(page),
         totalGames: count,
     });
+}
+
+
+export const getAllTraps = async () => {
+    return await Trap.findAll();
 }

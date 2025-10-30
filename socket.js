@@ -1,10 +1,12 @@
-import { Server } from "socket.io";
+import {Server} from "socket.io";
 import {ExtraField} from "./models/ExtraField.js";
 import {Game} from "./models/Game.js";
 import {MainField} from "./models/MainField.js";
 import {Op} from "sequelize";
 import * as userService from './services/userService.js'
 import {User} from "./models/User.js";
+import {TrapForGame} from "./models/TrapForGame.js";
+import {Trap} from "./models/Trap.js";
 
 let io;
 const userSockets = new Map();
@@ -102,6 +104,7 @@ export function initWebsocket(server) {
       });
 
       if (remainingCells === 0) {
+
         const game = await Game.findByPk(gameId);
         if (!game) return;
         if (game.status !== 'active') return
@@ -300,14 +303,52 @@ export function initWebsocket(server) {
       }
     });
 
-    socket.on("game:playerReady", async ({ gameId, userId }) => {
+    socket.on("game:playerReady", async ({ gameId, userId, chosenTrap }) => {
       const game = await Game.findByPk(gameId);
       if (!game) return;
+      const traps = await Trap.findAll();
 
       const readyPlayers = game.readyPlayers || [];
       if (!readyPlayers.includes(userId)) {
         await game.update({ readyPlayers: [...readyPlayers, userId] });
       }
+
+      if (game.player1Id === userId) {
+          await game.update({ chosenTrapPlayer1Id: chosenTrap })
+
+        await Promise.all(
+            chosenTrap.map((trapId) =>
+                {
+                    const trap = traps.find((trap) => trap.id === trapId);
+
+                    TrapForGame.create({
+                        title: trap.title,
+                        gameId: game.id,
+                        ownerId: userId,
+                    })
+                }
+            )
+        );
+      } else if (game.player2Id === userId) {
+          await game.update({ chosenTrapPlayer2Id: chosenTrap })
+
+          await Promise.all(
+              chosenTrap.map((trapId) =>
+                  {
+                      const trap = traps.find((trap) => trap.id === trapId);
+
+                      TrapForGame.create({
+                          ...trap,
+                          title: trap.title,
+                          gameId: game.id,
+                          ownerId: userId,
+                      })
+                  }
+              )
+          );
+      }
+
+
 
       const bothReady =
           game.readyPlayers.includes(game.player1Id) &&
@@ -337,6 +378,11 @@ export function initWebsocket(server) {
         include: [
           { association: "player1", attributes: ["id", "name"] },
           { association: "player2", attributes: ["id", "name"] },
+            {
+                model: TrapForGame,
+                as: "traps",
+                attributes: ["id", "title", "isUsed", "ownerId"],
+            },
         ]
       });
 
@@ -456,6 +502,11 @@ export function initWebsocket(server) {
           include: [
             { association: "player1", attributes: ["id", "name"] },
             { association: "player2", attributes: ["id", "name"] },
+          {
+              model: TrapForGame,
+              as: "traps",
+              attributes: ["id", "title", "isUsed", "ownerId"],
+          },
           ]
         });
 
@@ -483,6 +534,26 @@ export function initWebsocket(server) {
           });
         }
       });
+    })
+
+
+    socket.on("game:use-trap", async ({gameId, trapId}) => {
+        const game = await Game.findByPk(gameId);
+        if (!game) return;
+
+        const trap = await TrapForGame.findByPk(trapId);
+
+        trap.isUsed = true;
+        await trap.save();
+
+        [game.player1Id, game.player2Id].forEach((id) => {
+          const socketId = getUserSockets().get(id);
+          if (socketId) {
+            getIO().to(socketId).emit("game:use-trap-success", {
+                trapId,
+            });
+          }
+        });
     })
 
     socket.on("registerUser", (userId) => {

@@ -2,9 +2,8 @@ import { User } from "../models/User.js";
 import { Invitation } from "../models/Invitation.js";
 import { getIO, getUserSockets } from "../socket.js";
 import { Op } from "sequelize";
-import { MainField } from "../models/MainField.js";
-import { ExtraField } from "../models/ExtraField.js";
 import { Game } from "../models/Game.js";
+import {TrapForGame} from "../models/TrapForGame.js";
 
 
 const tenMinutesFromNow = () => new Date(Date.now() + 10 * 60 * 1000);
@@ -98,6 +97,11 @@ export const acceptInvitation = async ({ invitationId, userId }) => {
         include: [
             { association: "player1", attributes: ["id", "name"] },
             { association: "player2", attributes: ["id", "name"] },
+            {
+                model: TrapForGame,
+                as: "traps",
+                attributes: ["id", "title", "isUsed", "ownerId"],
+            },
         ]
     });
 

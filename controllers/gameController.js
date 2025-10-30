@@ -30,3 +30,12 @@ export const getUserStatsSummary = async (req, res) => {
         res.status(err.status || 500).json({ error: err.message });
     }
 };
+
+export const getAllTraps = async (req, res) => {
+    try {
+        const response = await gameService.getAllTraps();
+        res.json(response);
+    } catch (err) {
+        res.status(err.status || 500).json({ error: err.message });
+    }
+};

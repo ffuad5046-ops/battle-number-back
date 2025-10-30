@@ -19,6 +19,18 @@ export const Game = sequelize.define("Game", {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
+    chosenTrapPlayer1Id: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: [],
+        comment: "Все ловушки игрока",
+    },
+    chosenTrapPlayer2Id: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: [],
+        comment: "Все ловушки игрока",
+    },
     currentTurnPlayerId: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -28,6 +40,16 @@ export const Game = sequelize.define("Game", {
         type: DataTypes.INTEGER,
         allowNull: true,
         comment: "Число, которое нужно найти/угадать/достичь",
+    },
+    speedOfDrawPlayer1: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 300,
+    },
+    speedOfDrawPlayer2: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 300,
     },
     winnerId: {
         type: DataTypes.INTEGER,
@@ -42,6 +64,12 @@ export const Game = sequelize.define("Game", {
         type: DataTypes.ENUM("accept", "active", "finished", "cancelled"),
         allowNull: false,
         defaultValue: "accept",
+    },
+
+    money: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 100,
     },
 
     // ✅ Новое поле — массив ID игроков, которые нажали "Готов"
