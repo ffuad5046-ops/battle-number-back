@@ -7,6 +7,7 @@ import * as userService from './services/userService.js'
 import {User} from "./models/User.js";
 import {TrapForGame} from "./models/TrapForGame.js";
 import {Trap} from "./models/Trap.js";
+import {fastLeaveX, slowLeaveX} from "./helpers/traps.js";
 
 let io;
 const userSockets = new Map();
@@ -315,6 +316,9 @@ export function initWebsocket(server) {
 
       if (game.player1Id === userId) {
           await game.update({ chosenTrapPlayer1Id: chosenTrap })
+      } else if (game.player2Id === userId) {
+          await game.update({ chosenTrapPlayer2Id: chosenTrap })
+      }
 
         await Promise.all(
             chosenTrap.map((trapId) =>
@@ -322,6 +326,8 @@ export function initWebsocket(server) {
                     const trap = traps.find((trap) => trap.id === trapId);
 
                     TrapForGame.create({
+                        ...trap,
+                        code: trap.code,
                         title: trap.title,
                         gameId: game.id,
                         ownerId: userId,
@@ -329,26 +335,6 @@ export function initWebsocket(server) {
                 }
             )
         );
-      } else if (game.player2Id === userId) {
-          await game.update({ chosenTrapPlayer2Id: chosenTrap })
-
-          await Promise.all(
-              chosenTrap.map((trapId) =>
-                  {
-                      const trap = traps.find((trap) => trap.id === trapId);
-
-                      TrapForGame.create({
-                          ...trap,
-                          title: trap.title,
-                          gameId: game.id,
-                          ownerId: userId,
-                      })
-                  }
-              )
-          );
-      }
-
-
 
       const bothReady =
           game.readyPlayers.includes(game.player1Id) &&
@@ -537,7 +523,7 @@ export function initWebsocket(server) {
     })
 
 
-    socket.on("game:use-trap", async ({gameId, trapId}) => {
+    socket.on("game:use-trap", async ({gameId, trapId, trapCode, userId}) => {
         const game = await Game.findByPk(gameId);
         if (!game) return;
 
@@ -545,6 +531,12 @@ export function initWebsocket(server) {
 
         trap.isUsed = true;
         await trap.save();
+        console.log(trapCode)
+        if (trapCode === 2) {
+            await fastLeaveX(userId, game)
+        } else if (trapCode === 6) {
+            await slowLeaveX(userId, game)
+        }
 
         [game.player1Id, game.player2Id].forEach((id) => {
           const socketId = getUserSockets().get(id);

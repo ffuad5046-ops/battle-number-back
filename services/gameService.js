@@ -19,7 +19,7 @@ export const getUserGame = async ({userId}) => {
             {
                 model: TrapForGame,
                 as: "traps",
-                attributes: ["id", "title", "isUsed", "ownerId"],
+                attributes: ["id", "title", "isUsed", "ownerId", "code"],
             },
         ]
     });

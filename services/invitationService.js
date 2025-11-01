@@ -1,9 +1,9 @@
-import { User } from "../models/User.js";
-import { Invitation } from "../models/Invitation.js";
-import { getIO, getUserSockets } from "../socket.js";
-import { Op } from "sequelize";
-import { Game } from "../models/Game.js";
-import {TrapForGame} from "../models/TrapForGame.js";
+import {User} from "../models/User.js";
+import {Invitation} from "../models/Invitation.js";
+import {getIO, getUserSockets} from "../socket.js";
+import {Op} from "sequelize";
+import {Game} from "../models/Game.js";
+import {getAllInfoAboutGame} from "../helpers/getAllInfoAboutGame.js";
 
 
 const tenMinutesFromNow = () => new Date(Date.now() + 10 * 60 * 1000);
@@ -93,17 +93,7 @@ export const acceptInvitation = async ({ invitationId, userId }) => {
         turnDeadline: null
     });
 
-    const game = await Game.findByPk(gameTemp.id, {
-        include: [
-            { association: "player1", attributes: ["id", "name"] },
-            { association: "player2", attributes: ["id", "name"] },
-            {
-                model: TrapForGame,
-                as: "traps",
-                attributes: ["id", "title", "isUsed", "ownerId"],
-            },
-        ]
-    });
+    const game = await getAllInfoAboutGame(gameTemp.id)
 
     [inv.fromUserId, inv.toUserId].forEach((id) => {
         const socketId = getUserSockets().get(id);
@@ -124,8 +114,8 @@ export const acceptInvitation = async ({ invitationId, userId }) => {
 export const declineInvitation = async ({ invitationId, userId }) => {
     const inv = await Invitation.findByPk(invitationId);
     if (!inv) return{ error: "Invitation not found" };
-    if (inv.toUserId !== Number(userId)) return{ error: "Not allowed" };
 
+    if (inv.toUserId !== Number(userId)) return{ error: "Not allowed" };
 
     inv.isAccepted = false;
     await inv.save();

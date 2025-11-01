@@ -26,6 +26,10 @@ export const TrapForGame = sequelize.define("TrapForGame", {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    code: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
     description: {
         type: DataTypes.STRING,
         allowNull: true,
